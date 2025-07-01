@@ -1,4 +1,3 @@
-// File: components/AppSidebar.tsx
 "use client";
 
 import {
@@ -13,9 +12,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
-import SidebarUserItem from "../components/SidebarUserItem";
+import { useCallback, useEffect, useState } from "react";
 import SidebarSkeleton from "../components/SidebarSkeleton";
+import SidebarUserItem from "../components/SidebarUserItem";
 
 import {
   DropdownMenu,
@@ -37,7 +36,7 @@ import {
   SidebarSeparator,
 } from "./ui/sidebar";
 
-import { StreamChat, Channel } from "stream-chat";
+import { Channel, StreamChat } from "stream-chat";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY!;
 const supportAdminId = "support_admin";
@@ -56,6 +55,7 @@ export default function AppSidebar() {
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [readChannels, setReadChannels] = useState<Record<string, boolean>>({});
 
   const refreshChannels = useCallback(async (client: StreamChat) => {
     try {
@@ -73,7 +73,8 @@ export default function AppSidebar() {
 
         if (typeof channel.id === "string") {
           unreadFlags[channel.id] =
-            !!lastMessageAt && (!readAt || new Date(readAt) < new Date(lastMessageAt));
+            !!lastMessageAt &&
+            (!readAt || new Date(readAt) < new Date(lastMessageAt));
         }
       }
 
@@ -94,10 +95,37 @@ export default function AppSidebar() {
         const client = StreamChat.getInstance(apiKey);
         clientInstance = client;
 
+        // Fetch the token
         const res = await fetch(`/api/token?user_id=${supportAdminId}`);
-        const { token } = await res.json();
 
-        await client.connectUser({ id: supportAdminId, name: "Support Admin" }, token);
+        // Check if the response is okay
+        if (!res.ok) {
+          throw new Error(`Failed to fetch token, status: ${res.status}`);
+        }
+
+        // Log the response for debugging
+        const responseBody = await res.text(); // Get the raw text response
+        console.log("Response from token API:", responseBody);
+
+        // Attempt to parse JSON if the response is valid
+        let jsonResponse;
+        try {
+          jsonResponse = JSON.parse(responseBody);
+        } catch (error) {
+          throw new Error("Invalid JSON in the response: " + responseBody);
+        }
+
+        // If token exists, proceed to connect user
+        const { token } = jsonResponse;
+        if (!token) {
+          throw new Error("Token not found in the response");
+        }
+
+        // Connect user
+        await client.connectUser(
+          { id: supportAdminId, name: "Support Admin" },
+          token
+        );
 
         setChatClient(client);
         await refreshChannels(client);
@@ -130,6 +158,17 @@ export default function AppSidebar() {
     };
   }, [refreshChannels]);
 
+  const handleChatClick = async (channel: Channel) => {
+    // Mark the current channel as read when opened
+    if (typeof channel.id === "string" && !readChannels[channel.id]) {
+      await channel.markRead(); // Marks the channel as read
+      setReadChannels((prevState) => ({
+        ...prevState,
+        [String(channel.id)]: true, // Use the channel's ID as the key
+      }));
+    }
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -137,7 +176,7 @@ export default function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link href="/">
-                <Image src="/logo.svg" alt="logo" width={20} height={20} />
+                <Image src="/logo.jpg" alt="logo" width={20} height={20} />
                 <span>Support Admin</span>
               </Link>
             </SidebarMenuButton>
@@ -170,43 +209,58 @@ export default function AppSidebar() {
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => setIsSupportOpen(!isSupportOpen)}>
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                      <MessageCircle size={16} />
-                      <span>Support Chats</span>
-                      {supportChannels.length > 0 && (
-                        <span className="text-xs bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
-                          {supportChannels.length}
-                        </span>
+              {supportChannels.length > 0 && ( // Only show Support Chats if there are channels
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setIsSupportOpen(!isSupportOpen)}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <MessageCircle size={16} />
+                        <span>Support Chats</span>
+                        {supportChannels.filter(
+                          (channel) => unreadMap[String(channel.id)]
+                        ).length > 0 && (
+                          <span className="text-xs bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                            {
+                              supportChannels.filter(
+                                (channel) => unreadMap[String(channel.id)]
+                              ).length
+                            }
+                          </span>
+                        )}
+                      </div>
+                      {isSupportOpen ? (
+                        <ChevronUp size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
                       )}
                     </div>
-                    {isSupportOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
-                </SidebarMenuButton>
+                  </SidebarMenuButton>
 
-                {isSupportOpen && (
-                  <div className="ml-6 mt-2 max-h-[300px] overflow-y-auto">
-                    {isLoading ? (
-                      <SidebarSkeleton />
-                    ) : supportChannels.length > 0 ? (
-                      supportChannels.map((channel) => (
-                        <SidebarUserItem
-                          key={channel.id}
-                          channel={channel}
-                          supportAdminId={supportAdminId}
-                          hasUnread={unreadMap[String(channel.id)] ?? false}
-                        />
-                      ))
-                    ) : (
-                      <div className="text-xs text-gray-500 px-2 py-1">
-                        No active support chats
-                      </div>
-                    )}
-                  </div>
-                )}
-              </SidebarMenuItem>
+                  {isSupportOpen && (
+                    <div className="ml-6 mt-2 max-h-[300px] overflow-y-auto">
+                      {isLoading ? (
+                        <SidebarSkeleton />
+                      ) : supportChannels.length > 0 ? (
+                        supportChannels.map((channel) => (
+                          <SidebarUserItem
+                            key={channel.id}
+                            channel={channel}
+                            supportAdminId={supportAdminId}
+                            hasUnread={unreadMap[String(channel.id)] ?? false}
+                            onClick={() => handleChatClick(channel)} // Pass the async function
+                          />
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-500 px-2 py-1">
+                          No active support chats
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

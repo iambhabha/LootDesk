@@ -1,5 +1,5 @@
-import { StreamChat } from 'stream-chat';
 import { NextRequest } from 'next/server';
+import { StreamChat } from 'stream-chat';
 
 const apiKey = process.env.STREAM_API_KEY!;
 const apiSecret = process.env.STREAM_API_SECRET!;
@@ -13,6 +13,10 @@ export async function GET(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Missing user_id' }), { status: 400 });
   }
 
-  const token = serverClient.createToken(userId);
-  return new Response(JSON.stringify({ token }), { status: 200 });
+  try {
+    const token = serverClient.createToken(userId);
+    return new Response(JSON.stringify({ token }), { status: 200 });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to generate token' }), { status: 500 });
+  }
 }
