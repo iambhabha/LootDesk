@@ -1,3 +1,4 @@
+// File: components/AppSidebar.tsx
 "use client";
 
 import {
@@ -5,17 +6,17 @@ import {
   ChevronDown,
   ChevronUp,
   Home,
-  Inbox,
-  MessageCircleCode,
-  Plus,
-  Projector,
+  MessageCircle,
   Search,
   Settings,
   User2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import SidebarUserItem from "../components/SidebarUserItem";
+import SidebarSkeleton from "../components/SidebarSkeleton";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,60 +28,92 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
 } from "./ui/sidebar";
 
-import { StreamChat } from "stream-chat";
+import { StreamChat, Channel } from "stream-chat";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY!;
 const supportAdminId = "support_admin";
 
-const items = [
+const navItems = [
   { title: "Home", url: "/", icon: Home },
-  { title: "Inbox", url: "#", icon: Inbox },
   { title: "Calendar", url: "#", icon: Calendar },
+  { title: "Chat Testing", url: "/chat", icon: Calendar },
   { title: "Search", url: "#", icon: Search },
   { title: "Settings", url: "#", icon: Settings },
 ];
 
-export const AppSidebar = () => {
+export default function AppSidebar() {
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
-  const [supportChannels, setSupportChannels] = useState<any[]>([]);
+  const [supportChannels, setSupportChannels] = useState<Channel[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSupportOpen, setIsSupportOpen] = useState(true);
 
-  useEffect(() => {
-    const init = async () => {
-      if (!apiKey || !supportAdminId) return;
-
-      const client = StreamChat.getInstance(apiKey);
-      const res = await fetch(`/api/token?user_id=${supportAdminId}`);
-      const { token } = await res.json();
-
-      await client.connectUser({ id: supportAdminId, name: "Support Admin" }, token);
-      setChatClient(client);
-
-      const channels = await client.queryChannels({
-        type: "messaging",
-        members: { $in: [supportAdminId] },
-      });
-
+  const refreshChannels = useCallback(async (client: StreamChat) => {
+    try {
+      const channels = await client.queryChannels(
+        { type: "messaging", members: { $in: [supportAdminId] } },
+        { last_message_at: -1 },
+        { watch: true, state: true }
+      );
       setSupportChannels(channels);
+    } catch (err) {
+      console.error("Failed to fetch channels", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let clientInstance: StreamChat | null = null;
+
+    const initChat = async () => {
+      try {
+        const client = StreamChat.getInstance(apiKey);
+        clientInstance = client;
+
+        const res = await fetch(`/api/token?user_id=${supportAdminId}`);
+        const { token } = await res.json();
+
+        await client.connectUser({ id: supportAdminId, name: "Support Admin" }, token);
+
+        setChatClient(client);
+        await refreshChannels(client);
+
+        const handleEvent = () => refreshChannels(client);
+        client.on("message.new", handleEvent);
+        client.on("channel.updated", handleEvent);
+        client.on("channel.deleted", handleEvent);
+        client.on("notification.added_to_channel", handleEvent);
+
+        (client as any)._supportHandler = handleEvent;
+      } catch (err) {
+        console.error("Error initializing Stream", err);
+      }
     };
 
-    init();
+    initChat();
 
     return () => {
-      if (chatClient) chatClient.disconnectUser();
+      if (clientInstance) {
+        const handleEvent = (clientInstance as any)._supportHandler;
+        if (handleEvent) {
+          clientInstance.off("message.new", handleEvent);
+          clientInstance.off("channel.updated", handleEvent);
+          clientInstance.off("channel.deleted", handleEvent);
+          clientInstance.off("notification.added_to_channel", handleEvent);
+        }
+        clientInstance.disconnectUser();
+      }
     };
-  }, []);
+  }, [refreshChannels]);
 
   return (
     <Sidebar collapsible="icon">
@@ -90,7 +123,7 @@ export const AppSidebar = () => {
             <SidebarMenuButton asChild>
               <Link href="/">
                 <Image src="/logo.svg" alt="logo" width={20} height={20} />
-                <span>Lama Dev</span>
+                <span>Support Admin</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -101,20 +134,17 @@ export const AppSidebar = () => {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {navItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link href={item.url}>
-                      <item.icon />
+                      <item.icon size={16} />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
-                  {item.title === "Inbox" && (
-                    <SidebarMenuBadge>24</SidebarMenuBadge>
-                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -129,77 +159,54 @@ export const AppSidebar = () => {
                 <SidebarMenuButton onClick={() => setIsSupportOpen(!isSupportOpen)}>
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
-                      <MessageCircleCode />
-                      <span>Support Chat</span>
+                      <MessageCircle size={16} />
+                      <span>Support Chats</span>
+                      {supportChannels.length > 0 && (
+                        <span className="text-xs bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                          {supportChannels.length}
+                        </span>
+                      )}
                     </div>
-                    {isSupportOpen ? <ChevronUp /> : <ChevronDown />}
+                    {isSupportOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
                 </SidebarMenuButton>
 
-                {isSupportOpen && supportChannels.length > 0 && (
-                  <SidebarMenu className="ml-6 mt-2">
-                    {supportChannels.map((channel) => {
-                      const user = Object.values(channel.state.members).find(
-                        (m: any) => m?.user?.id && m.user.id !== supportAdminId
-                      ) as { user?: { id?: string; name?: string } } | undefined;
-                      return (
-                        <SidebarMenuItem key={channel.id}>
-                          <SidebarMenuButton asChild>
-                            <Link href={`/chat/${channel.id}`}>
-                              <span>{user?.user?.name || user?.user?.id || "Unknown User"}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
+                {isSupportOpen && (
+                  <div className="ml-6 mt-2 max-h-[300px] overflow-y-auto">
+                    {isLoading ? (
+                      <SidebarSkeleton />
+                    ) : supportChannels.length > 0 ? (
+                      supportChannels.map((channel) => (
+                        <SidebarUserItem
+                          key={channel.id}
+                          channel={channel}
+                          supportAdminId={supportAdminId}
+                        />
+                      ))
+                    ) : (
+                      <div className="text-xs text-gray-500 px-2 py-1">
+                        No active support chats
+                      </div>
+                    )}
+                  </div>
                 )}
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Projects</SidebarGroupLabel>
-          <SidebarGroupAction>
-            <Plus />
-            <span className="sr-only">Add Project</span>
-          </SidebarGroupAction>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="#">
-                    <Projector />
-                    See All Projects
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link href="#">
-                    <Plus />
-                    Add Project
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
-
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton>
-                  <User2 /> Admin <ChevronUp className="ml-auto" />
+                  <User2 size={16} /> Admin
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>Account</DropdownMenuItem>
-                <DropdownMenuItem>Setting</DropdownMenuItem>
+                <DropdownMenuItem>Settings</DropdownMenuItem>
                 <DropdownMenuItem>Sign out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -208,6 +215,4 @@ export const AppSidebar = () => {
       </SidebarFooter>
     </Sidebar>
   );
-};
-
-export default AppSidebar;
+}

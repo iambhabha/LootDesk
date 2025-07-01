@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
+import { useParams } from "next/navigation";
 import {
   Chat,
   Channel,
-  ChannelHeader,
   MessageList,
   MessageInput,
+  ChannelHeader,
   Thread,
   Window,
 } from "stream-chat-react";
@@ -15,52 +15,59 @@ import { StreamChat } from "stream-chat";
 import "stream-chat-react/dist/css/v2/index.css";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY!;
-const adminId = "support_admin";
+const supportAdminId = "support_admin";
 
-export default function ChatPage() {
-  const router = useRouter();
-  const { channelId } = router.query;
+export default function ChatView() {
+  const params = useParams();
+  const channelId = params?.channelId as string;
 
-  const [chatClient, setChatClient] = useState<StreamChat | null>(null);
+  const [client, setClient] = useState<StreamChat | null>(null);
   const [channel, setChannel] = useState<any>(null);
 
   useEffect(() => {
-    if (!channelId) return;
+    async function init() {
+      try {
+        const chatClient = StreamChat.getInstance(apiKey);
+        const res = await fetch(`/api/token?user_id=${supportAdminId}`);
+        const { token } = await res.json();
 
-    const init = async () => {
-      const client = StreamChat.getInstance(apiKey);
-      const res = await fetch(`/api/token?user_id=${adminId}`);
-      const { token } = await res.json();
+        await chatClient.connectUser(
+          { id: supportAdminId, name: "Support Admin" },
+          token
+        );
 
-      await client.connectUser({ id: adminId, name: "Support Admin" }, token);
+        const supportChannel = chatClient.channel("messaging", channelId);
+        await supportChannel.watch();
 
-      const channel = client.channel("messaging", channelId as string);
-      await channel.watch();
-      setChannel(channel);
-      setChatClient(client);
-    };
+        setClient(chatClient);
+        setChannel(supportChannel);
+      } catch (err) {
+        console.error("Chat init error:", err);
+      }
+    }
 
     init();
-
     return () => {
-      if (chatClient) chatClient.disconnectUser();
+      client?.disconnectUser();
     };
   }, [channelId]);
 
-  if (!chatClient || !channel) {
-    return <div className="p-6 text-center text-gray-500">Loading chat...</div>;
+  if (!client || !channel) {
+    return <div className="p-6 text-center text-muted">Loading chat...</div>;
   }
 
   return (
-    <Chat client={chatClient} theme="messaging light">
-      <Channel channel={channel}>
-        <Window>
-          <ChannelHeader />
-          <MessageList />
-          <MessageInput />
-        </Window>
-        <Thread />
-      </Channel>
-    </Chat>
+    <div className="h-screen bg-background text-foreground">
+      <Chat client={client} theme="messaging light">
+        <Channel channel={channel}>
+          <Window>
+            <ChannelHeader />
+            <MessageList />
+            <MessageInput focus />
+          </Window>
+          <Thread />
+        </Channel>
+      </Chat>
+    </div>
   );
 }
