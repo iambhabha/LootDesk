@@ -8,6 +8,7 @@ import {
   MessageList,
   MessageInput,
   ChannelHeader,
+  TypingIndicator,
   Window,
   Thread,
 } from "stream-chat-react";
@@ -85,6 +86,7 @@ export default function ChatViewPage() {
           <Window>
             <ChannelHeader />
             <MessageList />
+
             <MessageInput focus />
           </Window>
           <Thread />
