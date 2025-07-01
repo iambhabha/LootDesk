@@ -53,8 +53,9 @@ const navItems = [
 export default function AppSidebar() {
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
   const [supportChannels, setSupportChannels] = useState<Channel[]>([]);
+  const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isSupportOpen, setIsSupportOpen] = useState(true);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   const refreshChannels = useCallback(async (client: StreamChat) => {
     try {
@@ -63,7 +64,21 @@ export default function AppSidebar() {
         { last_message_at: -1 },
         { watch: true, state: true }
       );
+
+      const unreadFlags: Record<string, boolean> = {};
+
+      for (const channel of channels) {
+        const lastMessageAt = channel.state.last_message_at;
+        const readAt = channel.state.read?.[supportAdminId]?.last_read;
+
+        if (typeof channel.id === "string") {
+          unreadFlags[channel.id] =
+            !!lastMessageAt && (!readAt || new Date(readAt) < new Date(lastMessageAt));
+        }
+      }
+
       setSupportChannels(channels);
+      setUnreadMap(unreadFlags);
     } catch (err) {
       console.error("Failed to fetch channels", err);
     } finally {
@@ -181,6 +196,7 @@ export default function AppSidebar() {
                           key={channel.id}
                           channel={channel}
                           supportAdminId={supportAdminId}
+                          hasUnread={unreadMap[String(channel.id)] ?? false}
                         />
                       ))
                     ) : (
@@ -195,6 +211,7 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>

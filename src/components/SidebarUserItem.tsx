@@ -4,23 +4,33 @@ import { Channel } from "stream-chat";
 type Props = {
     channel: Channel;
     supportAdminId: string;
+    hasUnread: boolean;
 };
 
-export default function SidebarUserItem({ channel, supportAdminId }: Props) {
-    const members = Object.values(channel.state.members);
-    const other = members.find(m => m.user?.id !== supportAdminId)?.user;
+export default function SidebarUserItem({ channel, supportAdminId, hasUnread }: Props) {
+    const otherMember = Object.values(channel.state.members).find(
+        (m) => m.user?.id !== supportAdminId
+    );
 
-    const lastMessage = channel.state.messages?.[channel.state.messages.length - 1];
-    const text = lastMessage?.text || "No messages yet";
-    const sender = lastMessage?.user?.name || lastMessage?.user?.id || "Unknown";
-    const shortText = text.length > 30 ? `${text.slice(0, 30)}...` : text;
+    const userName = otherMember?.user?.name || "Unknown User";
+    const lastMessage = channel.state.messages[channel.state.messages.length - 1];
+    const lastMessageText = lastMessage?.text || "No messages yet";
 
     return (
-        <div className="ml-4 mb-2">
-            <Link href={`/chat/${channel.id}`} className="block px-2 py-1 hover:bg-muted rounded">
-                <div className="font-medium">{other?.name || other?.id || "Unknown User"}</div>
-                <div className="text-xs text-muted-foreground truncate">{`${sender}: ${shortText}`}</div>
-            </Link>
-        </div>
+        <Link
+            href={`/chat/${channel.id}`}
+            className="flex justify-between items-center rounded-md hover:bg-accent px-2 py-1 text-sm text-left transition-colors group"
+        >
+            <div className="flex flex-col">
+                <span className={`font-medium ${hasUnread ? "text-white font-bold" : ""}`}>
+                    {userName}
+                </span>
+                <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                    {lastMessageText}
+                </span>
+            </div>
+
+            {hasUnread && <span className="ml-2 w-2 h-2 rounded-full bg-red-500" />}
+        </Link>
     );
 }
