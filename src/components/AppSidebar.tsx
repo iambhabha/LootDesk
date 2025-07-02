@@ -44,7 +44,6 @@ const supportAdminId = "support_admin";
 const navItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Calendar", url: "#", icon: Calendar },
-  { title: "Chat Testing", url: "/chat", icon: Calendar },
   { title: "Search", url: "#", icon: Search },
   { title: "Settings", url: "#", icon: Settings },
 ];
