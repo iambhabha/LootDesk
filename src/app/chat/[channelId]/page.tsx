@@ -11,6 +11,7 @@ import {
   MessageInput,
   MessageList,
   Thread,
+  TypingIndicator,
   Window,
 } from "stream-chat-react";
 import "stream-chat-react/dist/css/v2/index.css";
@@ -66,7 +67,7 @@ export default function ChatViewPage() {
           <Window>
             <ChannelHeader />
             <MessageList />
-
+            <TypingIndicator />
             <MessageInput focus />
           </Window>
           <Thread />

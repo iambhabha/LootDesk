@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { StreamChat } from "stream-chat";
 import {
-  Chat,
   Channel,
   ChannelHeader,
+  Chat,
   MessageInput,
   MessageList,
   Thread,
   Window,
 } from "stream-chat-react";
-import { StreamChat } from "stream-chat";
 import "stream-chat-react/dist/css/v2/index.css";
+import TypingIndicator from "./TypingIndicator";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY!;
 const userId = "support_admin"; // Admin ID
@@ -35,7 +36,10 @@ export default function ChatPage() {
         // Fetch channels like support_user123, support_user456
         const filter = { type: "messaging" };
         const result = await client.queryChannels(filter);
-        const supportChannels = result.filter(channel => typeof channel.id === "string" && channel.id.startsWith("support_"));
+        const supportChannels = result.filter(
+          (channel) =>
+            typeof channel.id === "string" && channel.id.startsWith("support_")
+        );
         setChannels(supportChannels);
 
         setActiveChannel(result[0]); // auto-select first
@@ -64,7 +68,9 @@ export default function ChatPage() {
     <div className="flex h-screen">
       {/* Sidebar - Channel list */}
       <div className="w-1/4 bg-gray-100 dark:bg-gray-900 p-4 overflow-auto">
-        <h2 className="text-lg font-semibold mb-4 dark:text-white">Support Chats</h2>
+        <h2 className="text-lg font-semibold mb-4 dark:text-white">
+          Support Chats
+        </h2>
         <ul>
           {channels.map((channel) => {
             const user = channel.state?.members.find(
@@ -75,12 +81,17 @@ export default function ChatPage() {
                 key={channel.id}
                 onClick={() => setActiveChannel(channel)}
                 className={`cursor-pointer p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
-                  activeChannel?.id === channel.id ? 'bg-gray-300 dark:bg-gray-800' : ''
+                  activeChannel?.id === channel.id
+                    ? "bg-gray-300 dark:bg-gray-800"
+                    : ""
                 }`}
               >
-                <p className="font-medium dark:text-white">{user?.name ?? 'Unknown User'}</p>
+                <p className="font-medium dark:text-white">
+                  {user?.name ?? "Unknown User"}
+                </p>
                 <p className="text-sm text-gray-500 truncate dark:text-gray-400">
-                  {channel.state.messages?.slice(-1)[0]?.text ?? 'No messages yet'}
+                  {channel.state.messages?.slice(-1)[0]?.text ??
+                    "No messages yet"}
                 </p>
               </li>
             );
@@ -93,8 +104,10 @@ export default function ChatPage() {
         <Chat client={chatClient} theme="messaging light">
           <Channel channel={activeChannel}>
             <Window>
+              <TypingIndicator show={true} />
               <ChannelHeader />
               <MessageList />
+
               <MessageInput focus />
             </Window>
             <Thread />
