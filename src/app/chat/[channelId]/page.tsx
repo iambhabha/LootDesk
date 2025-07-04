@@ -62,7 +62,7 @@ export default function ChatViewPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-56px)] max-h-[calc(95vh-56px)] overflow-hidden bg-white dark:bg-black text-black dark:text-white">
+    <div className="h-[calc(100vh-56px)] max-h-[calc(97vh-56px)] overflow-hidden bg-white dark:bg-black text-black dark:text-white">
       <Chat client={client} theme="str-chat__theme-dark">
         <ChannelComponent channel={channel}>
           <Window>
