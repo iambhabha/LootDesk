@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Search,
   Settings,
+  Swords,
   User2,
 } from "lucide-react";
 import Image from "next/image";
@@ -43,6 +44,7 @@ const supportAdminId = "support_admin";
 
 const navItems = [
   { title: "Home", url: "/", icon: Home },
+  { title: "Add Tournament", url: "/tournaments", icon: Swords },
   { title: "Calendar", url: "#", icon: Calendar },
   { title: "Search", url: "#", icon: Search },
   { title: "Settings", url: "#", icon: Settings },
