@@ -50,8 +50,9 @@ const navItems = [
   { title: "Settings", url: "#", icon: Settings },
 ];
 
+type StreamChatWithHandler = StreamChat & { _supportHandler?: () => void };
+
 export default function AppSidebar() {
-  // const [chatClient, setChatClient] = useState<StreamChat | null>(null);
   const [supportChannels, setSupportChannels] = useState<Channel[]>([]);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -89,46 +90,39 @@ export default function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    let clientInstance: StreamChat | null = null;
+    const clientInstance: StreamChat | null = null;
 
     const initChat = async () => {
       try {
-        const client = StreamChat.getInstance(apiKey);
-        clientInstance = client;
+        const client: StreamChat = StreamChat.getInstance(apiKey);
+        const clientWithHandler = client as StreamChatWithHandler;
 
         // Fetch the token
         const res = await fetch(`/api/token?user_id=${supportAdminId}`);
-
-        // Check if the response is okay
         if (!res.ok) {
           throw new Error(`Failed to fetch token, status: ${res.status}`);
         }
 
-        // Log the response for debugging
-        const responseBody = await res.text(); // Get the raw text response
-        console.log("Response from token API:", responseBody);
-
-        // Attempt to parse JSON if the response is valid
+        const responseBody = await res.text();
         let jsonResponse;
         try {
           jsonResponse = JSON.parse(responseBody);
         } catch (error) {
-          throw new Error("Invalid JSON in the response: " + responseBody);
+          throw new Error(
+            "Invalid JSON in the response: " + responseBody,
+            error as Error
+          );
         }
 
-        // If token exists, proceed to connect user
         const { token } = jsonResponse;
         if (!token) {
           throw new Error("Token not found in the response");
         }
 
-        // Connect user
         await client.connectUser(
           { id: supportAdminId, name: "Support Admin" },
           token
         );
-
-        // setChatClient(client);
         await refreshChannels(client);
 
         const handleEvent = () => refreshChannels(client);
@@ -137,7 +131,7 @@ export default function AppSidebar() {
         client.on("channel.deleted", handleEvent);
         client.on("notification.added_to_channel", handleEvent);
 
-        (client as any)._supportHandler = handleEvent;
+        clientWithHandler._supportHandler = handleEvent;
       } catch (err) {
         console.error("Error initializing Stream", err);
       }
@@ -146,15 +140,22 @@ export default function AppSidebar() {
     initChat();
 
     return () => {
-      if (clientInstance) {
-        const handleEvent = (clientInstance as any)._supportHandler;
+      if (
+        clientInstance &&
+        typeof (clientInstance as StreamChat).off === "function"
+      ) {
+        const clientWithHandler = clientInstance as StreamChatWithHandler;
+        const handleEvent = clientWithHandler._supportHandler;
         if (handleEvent) {
-          clientInstance.off("message.new", handleEvent);
-          clientInstance.off("channel.updated", handleEvent);
-          clientInstance.off("channel.deleted", handleEvent);
-          clientInstance.off("notification.added_to_channel", handleEvent);
+          (clientInstance as StreamChat).off("message.new", handleEvent);
+          (clientInstance as StreamChat).off("channel.updated", handleEvent);
+          (clientInstance as StreamChat).off("channel.deleted", handleEvent);
+          (clientInstance as StreamChat).off(
+            "notification.added_to_channel",
+            handleEvent
+          );
         }
-        clientInstance.disconnectUser();
+        (clientInstance as StreamChat).disconnectUser();
       }
     };
   }, [refreshChannels]);
@@ -210,7 +211,7 @@ export default function AppSidebar() {
           <SidebarGroupLabel>Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {supportChannels.length > 0 && ( // Only show Support Chats if there are channels
+              {supportChannels.length > 0 && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     onClick={() => setIsSupportOpen(!isSupportOpen)}

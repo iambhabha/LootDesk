@@ -3,9 +3,10 @@
 import ChatShimmer from "@/components/ChatShimmer";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { Channel as StreamChannel } from "stream-chat";
 import { StreamChat } from "stream-chat";
 import {
-  Channel,
+  Channel as ChannelComponent,
   ChannelHeader,
   Chat,
   MessageInput,
@@ -23,7 +24,7 @@ export default function ChatViewPage() {
   const params = useParams();
   const channelId = params?.channelId as string | undefined;
   const [client, setClient] = useState<StreamChat | null>(null);
-  const [channel, setChannel] = useState<any>(null);
+  const [channel, setChannel] = useState<StreamChannel | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -61,18 +62,16 @@ export default function ChatViewPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-56px)] max-h-[calc(95vh-56px)] overflow-hidden bg-white dark:bg-black text-black dark:text-white">
-      <Chat client={client} theme="str-chat__theme-dark">
-        <Channel channel={channel}>
-          <Window>
-            <ChannelHeader />
-            <MessageList />
-            <TypingIndicator />
-            <MessageInput focus />
-          </Window>
-          <Thread />
-        </Channel>
-      </Chat>
-    </div>
+    <Chat client={client} theme="str-chat__theme-dark">
+      <ChannelComponent channel={channel}>
+        <Window>
+          <ChannelHeader />
+          <MessageList />
+          <TypingIndicator />
+          <MessageInput focus />
+        </Window>
+        <Thread />
+      </ChannelComponent>
+    </Chat>
   );
 }

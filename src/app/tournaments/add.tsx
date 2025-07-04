@@ -13,7 +13,6 @@ const AddTournamentPage = () => {
     e.preventDefault();
 
     // Save tournament data (API call or database save logic)
-    const newTournament = { name, date };
 
     // Redirect to tournaments list page after save
     router.push("/tournaments");

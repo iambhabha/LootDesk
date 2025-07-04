@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { StreamChat } from "stream-chat";
+import { Channel as StreamChannelType, StreamChat } from "stream-chat";
 import {
   Channel,
   ChannelHeader,
@@ -22,7 +22,7 @@ export default function ChatView() {
   const channelId = params?.channelId as string;
 
   const [client, setClient] = useState<StreamChat | null>(null);
-  const [channel, setChannel] = useState<any>(null);
+  const [channel, setChannel] = useState<StreamChannelType | null>(null);
 
   useEffect(() => {
     async function init() {
