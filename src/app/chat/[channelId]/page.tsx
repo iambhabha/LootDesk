@@ -62,16 +62,18 @@ export default function ChatViewPage() {
   }
 
   return (
-    <Chat client={client} theme="str-chat__theme-dark">
-      <ChannelComponent channel={channel}>
-        <Window>
-          <ChannelHeader />
-          <MessageList />
-          <TypingIndicator />
-          <MessageInput focus />
-        </Window>
-        <Thread />
-      </ChannelComponent>
-    </Chat>
+    <div className="h-[calc(100vh-56px)] max-h-[calc(95vh-56px)] overflow-hidden bg-white dark:bg-black text-black dark:text-white">
+      <Chat client={client} theme="str-chat__theme-dark">
+        <ChannelComponent channel={channel}>
+          <Window>
+            <ChannelHeader />
+            <MessageList />
+            <TypingIndicator />
+            <MessageInput focus />
+          </Window>
+          <Thread />
+        </ChannelComponent>
+      </Chat>
+    </div>
   );
 }
