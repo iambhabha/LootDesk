@@ -51,7 +51,7 @@ const navItems = [
 ];
 
 export default function AppSidebar() {
-  const [chatClient, setChatClient] = useState<StreamChat | null>(null);
+  // const [chatClient, setChatClient] = useState<StreamChat | null>(null);
   const [supportChannels, setSupportChannels] = useState<Channel[]>([]);
   const [unreadMap, setUnreadMap] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -128,7 +128,7 @@ export default function AppSidebar() {
           token
         );
 
-        setChatClient(client);
+        // setChatClient(client);
         await refreshChannels(client);
 
         const handleEvent = () => refreshChannels(client);

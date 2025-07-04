@@ -1,3 +1,4 @@
+// tournaments/route.ts
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -11,10 +12,11 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const newTournament = await req.json();
+  // const newTournament = await req.json();
 
-  // Example: Save tournament to database
-  // Save logic here (using Prisma, MongoDB, etc.)
+  // Save the tournament to a database or handle it in some other way.
+  // Example: You can log it or insert it into a database here:
+  // await db.saveTournament(newTournament);
 
   return NextResponse.json(
     { message: "Tournament added successfully" },

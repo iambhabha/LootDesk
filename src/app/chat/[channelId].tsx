@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { StreamChat } from "stream-chat";
 import {
-  Chat,
   Channel,
-  MessageList,
-  MessageInput,
   ChannelHeader,
+  Chat,
+  MessageInput,
+  MessageList,
   Thread,
   Window,
 } from "stream-chat-react";
-import { StreamChat } from "stream-chat";
 import "stream-chat-react/dist/css/v2/index.css";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_API_KEY!;
